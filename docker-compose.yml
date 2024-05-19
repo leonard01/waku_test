@@ -1,9 +1,9 @@
 version: "3.8"
 
 services:
-  nwaku1:
+  nwaku:
     image: wakuorg/nwaku:v0.24.0
-    container_name: nwaku1
+    container_name: nwaku
     ports:
       - "21161:21161"
       - "21162:21162"
@@ -22,13 +22,13 @@ services:
       - --tcp-port=21162
       - --discv5-udp-port=21164
       - --rest-address=0.0.0.0
-      - --nat=extip:172.18.111.226
+      - --nat=extip:172.20.111.226
       - --peer-exchange=true
       - --discv5-discovery=true
       - --relay=true
     networks:
-      - waku
-
+      waku:
+        ipv4_address: 172.20.111.226
 networks:
   waku:
     external: true

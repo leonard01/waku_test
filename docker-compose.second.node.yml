@@ -1,9 +1,9 @@
 version: "3.8"
 
 services:
-  nwaku2:
+  nwaku_2:
     image: wakuorg/nwaku:v0.24.0
-    container_name: nwaku2
+    container_name: nwaku_2
     ports:
       - "31161:21161" # REST port
       - "31162:21162" # TCP port
@@ -22,14 +22,14 @@ services:
       - --tcp-port=21162
       - --discv5-udp-port=21164
       - --rest-address=0.0.0.0
-      - --nat=extip:192.168.1.100 # Updated external IP address for the second service
+      - --nat=extip:172.20.111.227 # Updated external IP address for the second service
       - --peer-exchange=true
       - --discv5-discovery=true
       - --relay=true
-      - --discv5-bootstrap-node=${ENR_URI} # Use an environment variable for the ENR URI
+      - --discv5-bootstrap-node=${ENR_URI:-default-value}
     networks:
-      - waku
-
+      waku:
+        ipv4_address: 172.20.111.227
 networks:
   waku:
     external: true

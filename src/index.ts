@@ -46,7 +46,11 @@ async function networkExists(networkName: string) {
   }
 }
 
-async function createDockerNetwork(networkName: string, subnet: string) {
+async function createDockerNetwork(
+  networkName: string,
+  subnet: string,
+  gateway: string
+) {
   const exists = await networkExists(networkName);
   if (exists) {
     console.log(
@@ -57,16 +61,49 @@ async function createDockerNetwork(networkName: string, subnet: string) {
 
   try {
     console.log(
-      `Creating Docker network: ${networkName} with subnet ${subnet}...`
+      `Creating Docker network: ${networkName} with subnet ${subnet} and gateway ${gateway}...`
     );
+    console.log("GOT HERE!!!!!!");
     await execPromise(
-      `docker network create --subnet=${subnet} ${networkName}`
+      `docker network create --driver bridge --subnet=${subnet} --gateway=${gateway} ${networkName}`
     );
     console.log(`Docker network ${networkName} created successfully.`);
   } catch (error) {
     console.error(`Error creating Docker network: ${error}`);
     throw error;
   }
+}
+
+async function waitForConnection(
+  nodeAddress: string,
+  timeout: number,
+  interval: number
+) {
+  const startTime = Date.now();
+  while (Date.now() - startTime < timeout) {
+    try {
+      const response = await axios.get("http://127.0.0.1:21161/admin/v1/peers");
+      console.log(response.data);
+      await delay(10000);
+      const peers = response.data;
+
+      if (response.data[0].multiaddr.includes(nodeAddress)) {
+        console.log(`Node ${nodeAddress} is connected.`);
+        return true;
+      } else {
+        console.log(`Node ${nodeAddress} is not connected yet.`);
+      }
+    } catch (error) {
+      console.error("Error fetching peers: ", error);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  console.log(
+    `Failed to confirm connection of node ${nodeAddress} within the timeout period.`
+  );
+  return false;
 }
 
 async function startDockerCompose(composeFilePath: string, enrUri?: string) {
@@ -131,8 +168,8 @@ async function performGetRequest() {
 }
 
 // return response.data and verify in test
-async function subscribeToTopic() {
-  const url = "http://127.0.0.1:21161/relay/v1/auto/subscriptions";
+async function subscribeToTopic(port: string) {
+  const url = `http://127.0.0.1:${port}/relay/v1/auto/subscriptions`;
   const data = ["/my-app/2/chatroom-1/proto"];
 
   try {
@@ -176,8 +213,8 @@ async function publishMessage() {
   }
 }
 
-async function verifyMessage(retries: number, delayMs: number) {
-  const url = `http://0.0.0.0:21161/relay/v1/auto/messages/%2Fmy-app%2F2%2Fchatroom-1%2Fproto`;
+async function verifyMessage(port: string, retries: number, delayMs: number) {
+  const url = `http://0.0.0.0:${port}/relay/v1/auto/messages/%2Fmy-app%2F2%2Fchatroom-1%2Fproto`;
   console.log("got here!!!!");
 
   for (let i = 0; i < retries; i++) {
@@ -222,4 +259,5 @@ export {
   delay,
   verifyMessage,
   createDockerNetwork,
+  waitForConnection,
 };
