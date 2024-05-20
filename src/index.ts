@@ -10,30 +10,12 @@ export const COMPOSE_FILE_2ND_NODE = path.resolve(
   "..",
   "docker-compose.second.node.yml"
 );
-
-// async function startDockerCompose(compose_file: string, enrUri?: string) {
-//   try {
-//     console.log("Starting Docker Compose...");
-//     // Set the environment variable for ENR_URI
-//     process.env.ENR_URI = enrUri;
-//     await upAll({ cwd: path.dirname(compose_file), log: true });
-//     console.log("Docker Compose started successfully.");
-//   } catch (error) {
-//     console.error("Error starting Docker Compose:", error);
-//     throw error;
-//   }
-// }
-
-// async function stopDockerCompose(compose_file: string) {
-//   try {
-//     console.log("Stopping Docker Compose...");
-//     await down({ cwd: path.dirname(compose_file), log: true });
-//     console.log("Docker Compose stopped successfully.");
-//   } catch (error) {
-//     console.error("Error stopping Docker Compose:", error);
-//     throw error;
-//   }
-// }
+export const NETWORKNAME: string = "waku";
+export const GATEWAY: string = "172.20.0.1";
+export const NODE2ADDRESS: string = "172.20.111.227";
+export const NODEPORT1: string = "21161";
+export const NODEPORT2: string = "31161";
+export const SUBNET: string = "172.20.0.0/16";
 
 const execPromise = util.promisify(exec);
 
@@ -58,12 +40,10 @@ async function createDockerNetwork(
     );
     return;
   }
-
   try {
     console.log(
       `Creating Docker network: ${networkName} with subnet ${subnet} and gateway ${gateway}...`
     );
-    console.log("GOT HERE!!!!!!");
     await execPromise(
       `docker network create --driver bridge --subnet=${subnet} --gateway=${gateway} ${networkName}`
     );
@@ -74,6 +54,7 @@ async function createDockerNetwork(
   }
 }
 
+// waits for connection between nodes to be established
 async function waitForConnection(
   nodeAddress: string,
   timeout: number,
@@ -83,18 +64,16 @@ async function waitForConnection(
   while (Date.now() - startTime < timeout) {
     try {
       const response = await axios.get("http://127.0.0.1:21161/admin/v1/peers");
-      console.log(response.data);
-      await delay(10000);
-      const peers = response.data;
-
-      if (response.data[0].multiaddr.includes(nodeAddress)) {
+      await delay(10000); // delay while address is populated
+      if (response.data[0].multiaddr?.includes(nodeAddress)) {
         console.log(`Node ${nodeAddress} is connected.`);
         return true;
       } else {
         console.log(`Node ${nodeAddress} is not connected yet.`);
+        return false;
       }
     } catch (error) {
-      console.error("Error fetching peers: ", error);
+      console.log("Error fetching peers: Retrying ", error);
     }
 
     await new Promise((resolve) => setTimeout(resolve, interval));
@@ -106,6 +85,7 @@ async function waitForConnection(
   return false;
 }
 
+// start node 1 or node 2 with optional param for enrUri
 async function startDockerCompose(composeFilePath: string, enrUri?: string) {
   try {
     console.log("Starting Docker Compose...");
@@ -136,8 +116,7 @@ async function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// rename function
-async function performGetRequestWithRetry(
+async function getDebugInfoWithRetry(
   url: string,
   retries: number,
   delayMs: number
@@ -158,13 +137,8 @@ async function performGetRequestWithRetry(
   }
 }
 
-//change function name
-async function performGetRequest() {
-  return performGetRequestWithRetry(
-    "http://0.0.0.0:21161/debug/v1/info",
-    5,
-    2000
-  );
+async function getDebugInfo() {
+  return getDebugInfoWithRetry("http://0.0.0.0:21161/debug/v1/info", 5, 2000);
 }
 
 // return response.data and verify in test
@@ -180,9 +154,6 @@ async function subscribeToTopic(port: string) {
       },
     });
     console.log("Subscription successful:", response.data);
-    // console.log("=========================");
-    // console.log(response);
-    // console.log("=========================");
   } catch (error) {
     console.error("Error subscribing to topic");
   }
@@ -204,10 +175,11 @@ async function publishMessage() {
         "content-type": "application/json",
       },
     });
-    console.log("Message published successfully:", response.data);
-    // console.log("==============================");
-    // console.log(response);
-    // console.log("==============================");
+    if (response.data == "ok") {
+      return true;
+    } else {
+      return false;
+    }
   } catch (error) {
     console.error("Error publishing message");
   }
@@ -215,7 +187,6 @@ async function publishMessage() {
 
 async function verifyMessage(port: string, retries: number, delayMs: number) {
   const url = `http://0.0.0.0:${port}/relay/v1/auto/messages/%2Fmy-app%2F2%2Fchatroom-1%2Fproto`;
-  console.log("got here!!!!");
 
   for (let i = 0; i < retries; i++) {
     try {
@@ -229,6 +200,9 @@ async function verifyMessage(port: string, retries: number, delayMs: number) {
 
       // Assuming the response is an array of messages
       const messages = response.data;
+      console.log("+++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+      console.log(messages);
+      console.log("+++++++++++++++++++++++++++++++++++++++++++++++++++++++");
       const messageFound = messages.some(
         (msg: any) => msg.payload === "UmVsYXkgd29ya3MhIQ=="
       );
@@ -253,7 +227,7 @@ async function verifyMessage(port: string, retries: number, delayMs: number) {
 export {
   startDockerCompose,
   stopDockerCompose,
-  performGetRequest,
+  getDebugInfo,
   subscribeToTopic,
   publishMessage,
   delay,
