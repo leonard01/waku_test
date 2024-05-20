@@ -45,6 +45,7 @@ describe("Single Node Tests", () => {
 });
 
 describe("Second Node Connection Tests", () => {
+  // create network and start nodes
   beforeAll(async () => {
     await createDockerNetwork(NETWORKNAME, SUBNET, GATEWAY);
     await startDockerCompose(COMPOSE_FILE);
@@ -54,8 +55,6 @@ describe("Second Node Connection Tests", () => {
     expect(response).toBeInstanceOf(Object);
     enrUri = response.enrUri;
     await startDockerCompose(COMPOSE_FILE_2ND_NODE, enrUri);
-    // const connected = await waitForConnection(NODE2ADDRESS, 600000, 10000); // 60 seconds timeout, 5 seconds interval
-    // expect(connected).toBeTruthy;
   });
 
   afterAll(async () => {
@@ -63,17 +62,8 @@ describe("Second Node Connection Tests", () => {
     await stopDockerCompose(COMPOSE_FILE_2ND_NODE);
   });
 
-  // if this test fails then fail all subsequent tests
-  // it("should perform GET request to /debug/v1/info and verify partial response", async () => {
-  //   const expectedResponse = "enr:-Kq4";
-  //   const response = await getDebugInfo();
-  //   expect(response.enrUri).toContain(expectedResponse);
-  //   expect(response).toBeInstanceOf(Object);
-  //   enrUri = response.enrUri;
-  // });
-
   it("should successfully connect the two nodes and verify", async () => {
-    const connected = await waitForConnection(NODE2ADDRESS, 600000, 10000); // 60 seconds timeout, 5 seconds interval
+    const connected = await waitForConnection(NODE2ADDRESS, 600000, 10000); // connection can take a while to establish
     expect(connected).toBeTruthy;
   });
 
