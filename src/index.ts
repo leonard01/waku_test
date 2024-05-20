@@ -16,6 +16,7 @@ export const NODE2ADDRESS: string = "172.20.111.227";
 export const NODEPORT1: string = "21161";
 export const NODEPORT2: string = "31161";
 export const SUBNET: string = "172.20.0.0/16";
+const PAYLOAD = "UmVsYXkgd29ya3MhIQ==";
 
 const execPromise = util.promisify(exec);
 
@@ -166,7 +167,7 @@ async function subscribeToTopic(port: string) {
 async function publishMessage() {
   const url = "http://127.0.0.1:21161/relay/v1/auto/messages";
   const data = {
-    payload: "UmVsYXkgd29ya3MhIQ==",
+    payload: PAYLOAD,
     contentTopic: "/my-app/2/chatroom-1/proto",
     timestamp: 0,
   };
@@ -201,9 +202,7 @@ async function verifyMessage(port: string, retries: number, delayMs: number) {
       console.log("Retrieved messages:", response.data);
 
       const messages = response.data;
-      const messageFound = messages.some(
-        (msg: any) => msg.payload === "UmVsYXkgd29ya3MhIQ=="
-      );
+      const messageFound = messages.some((msg: any) => msg.payload === PAYLOAD);
       if (messageFound) {
         console.log("Message successfully verified.");
         return true;
