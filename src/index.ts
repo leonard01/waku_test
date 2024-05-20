@@ -1,4 +1,4 @@
-import { upAll, down } from "docker-compose";
+import { down } from "docker-compose";
 import path from "path";
 import axios from "axios";
 import { exec } from "child_process";
@@ -60,6 +60,7 @@ async function waitForConnection(
   timeout: number,
   interval: number
 ) {
+  console.log("Waiting for nodes to connect...");
   const startTime = Date.now();
   while (Date.now() - startTime < timeout) {
     try {
@@ -73,7 +74,7 @@ async function waitForConnection(
         return false;
       }
     } catch (error) {
-      console.log("Error fetching peers: Retrying ", error);
+      console.log("Error fetching peers: Retrying \n", error);
     }
 
     await new Promise((resolve) => setTimeout(resolve, interval));
@@ -154,13 +155,14 @@ async function subscribeToTopic(port: string) {
       },
     });
     console.log("Subscription successful:", response.data);
+    return true;
   } catch (error) {
     console.error("Error subscribing to topic");
+    return false;
   }
 }
 
-// pararm for message details?
-// return response.data and verify in test
+// publishes a preset message to node 1
 async function publishMessage() {
   const url = "http://127.0.0.1:21161/relay/v1/auto/messages";
   const data = {
@@ -198,11 +200,7 @@ async function verifyMessage(port: string, retries: number, delayMs: number) {
       });
       console.log("Retrieved messages:", response.data);
 
-      // Assuming the response is an array of messages
       const messages = response.data;
-      console.log("+++++++++++++++++++++++++++++++++++++++++++++++++++++++");
-      console.log(messages);
-      console.log("+++++++++++++++++++++++++++++++++++++++++++++++++++++++");
       const messageFound = messages.some(
         (msg: any) => msg.payload === "UmVsYXkgd29ya3MhIQ=="
       );
